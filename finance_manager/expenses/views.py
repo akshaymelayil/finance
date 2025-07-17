@@ -2,20 +2,37 @@ from django.shortcuts import render, redirect
 from .models import Expense
 from .forms import ExpenseForm
 from django.contrib.auth.decorators import login_required
+import pandas as pd
 import matplotlib.pyplot as plt
 import io
 import base64
-
+from .forms import ExpenseForm
+from .ai_utils import predict_savings, get_chart, get_saving_tips
 
 @login_required
 def dashboard(request):
     expenses = Expense.objects.filter(user=request.user)
-    total = sum(e.amount for e in expenses)
+    form = ExpenseForm()
+
+    if request.method == 'POST':
+        form = ExpenseForm(request.POST)
+        if form.is_valid():
+            exp = form.save(commit=False)
+            exp.user = request.user
+            exp.save()
+            return redirect('dashboard')
+
+    predicted = predict_savings(expenses)
+    tips = get_saving_tips(predicted)
+    chart = get_chart(expenses)
+
     return render(request, 'expenses/dashboard.html', {
         'expenses': expenses,
-        'total': total
+        'form': form,
+        'predicted': predicted,
+        'tips': tips,
+        'chart': chart
     })
-
 
 def get_chart(expenses):
     df = pd.DataFrame(list(expenses.values('category', 'amount')))

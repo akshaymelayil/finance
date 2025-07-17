@@ -1,0 +1,36 @@
+<h2>Welcome {{ user.username }}!</h2>
+<a href="{% url 'logout' %}">Logout</a>
+
+<h3>Total Expenses: ₹{{ total }}</h3>
+<h4>Predicted Next Month Spending: ₹{{ predicted }}</h4>
+
+{% if chart %}
+    <img src="data:image/png;base64,{{ chart }}" />
+{% endif %}
+
+<h4>Smart Tips:</h4>
+<ul>
+  {% for tip in tips %}
+    <li>{{ tip }}</li>
+  {% endfor %}
+</ul>
+
+<h3>Add Expense</h3>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Add</button>
+</form>
+
+<h3>Recent Expenses</h3>
+<table border="1">
+    <tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr>
+    {% for e in expenses %}
+    <tr>
+        <td>{{ e.date }}</td>
+        <td>{{ e.category }}</td>
+        <td>₹{{ e.amount }}</td>
+        <td>{{ e.description }}</td>
+    </tr>
+    {% endfor %}
+</table>
