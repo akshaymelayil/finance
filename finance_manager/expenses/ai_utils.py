@@ -36,18 +36,26 @@ def get_saving_tips(predicted_spending):
 
 def get_chart(expenses):
     if not expenses.exists():
+        print("No expenses found.")
         return None
 
-    df = pd.DataFrame(list(expenses.values('category', 'amount')))
+    raw_data = list(expenses.values('category', 'amount'))
+    print("Raw expense values:", raw_data)
 
-    if df.empty or 'category' not in df.columns:
+    df = pd.DataFrame(raw_data)
+    print("DataFrame columns:", df.columns)
+
+    if df.empty or 'category' not in df.columns or 'amount' not in df.columns:
+        print("Missing 'category' or 'amount' column in DataFrame.")
         return None
 
-    df = df.groupby('category').sum()
+    grouped = df.groupby('category')['amount'].sum()
 
     plt.figure(figsize=(6, 4))
-    df.plot(kind='bar', legend=False)
+    grouped.plot(kind='bar', legend=False)
     plt.title("Expenses by Category")
+    plt.xlabel("Category")
+    plt.ylabel("Amount")
     plt.tight_layout()
 
     buffer = io.BytesIO()

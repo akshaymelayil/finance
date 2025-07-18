@@ -12,27 +12,44 @@ from .ai_utils import predict_savings, get_chart, get_saving_tips
 @login_required
 def dashboard(request):
     expenses = Expense.objects.filter(user=request.user)
-    form = ExpenseForm()
+    
+    if not expenses.exists():
+        return render(request, 'expenses/dashboard.html', {
+            'message': 'No expenses added yet.',
+        })
 
-    if request.method == 'POST':
-        form = ExpenseForm(request.POST)
-        if form.is_valid():
-            exp = form.save(commit=False)
-            exp.user = request.user
-            exp.save()
-            return redirect('dashboard')
+    # Convert to DataFrame
+    df = pd.DataFrame(list(expenses.values()))
 
-    predicted = predict_savings(expenses)
-    tips = get_saving_tips(predicted)
-    chart = get_chart(expenses)
+    # Safety check
+    if 'category' not in df.columns or 'amount' not in df.columns:
+        return render(request, 'expenses/dashboard.html', {
+            'message': 'Required data is missing.',
+        })
+
+    # ✅ Convert 'amount' to numeric
+    df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+
+    # Drop NaNs just in case
+    df.dropna(subset=['amount', 'category'], inplace=True)
+
+    # Group and plot
+    category_group = df.groupby('category')['amount'].sum()
+
+    fig, ax = plt.subplots()
+    category_group.plot(kind='bar', ax=ax)
+    ax.set_title('Expenses by Category')
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    buf.close()
 
     return render(request, 'expenses/dashboard.html', {
-        'expenses': expenses,
-        'form': form,
-        'predicted': predicted,
-        'tips': tips,
-        'chart': chart
+        'chart': image_base64,
     })
+
 
 def get_chart(expenses):
     df = pd.DataFrame(list(expenses.values('category', 'amount')))
